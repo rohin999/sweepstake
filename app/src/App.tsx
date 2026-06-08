@@ -1,18 +1,18 @@
 import { useState } from "react";
-import Draw from "./components/Draw";
+import Picks from "./components/Picks";
 import Standings from "./components/Standings";
 import Bracket from "./components/Bracket";
 
-type Tab = "draw" | "standings" | "bracket";
+type Tab = "picks" | "standings" | "bracket";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "draw", label: "Draw" },
+  { id: "picks", label: "Picks" },
   { id: "standings", label: "Standings" },
   { id: "bracket", label: "Bracket" },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("draw");
+  const [tab, setTab] = useState<Tab>("picks");
 
   return (
     <div className="min-h-[100dvh]">
@@ -41,7 +41,7 @@ export default function App() {
         </div>
       </header>
       <main className="px-4 py-8">
-        {tab === "draw" && <Draw />}
+        {tab === "picks" && <Picks />}
         {tab === "standings" && <Standings />}
         {tab === "bracket" && <Bracket />}
       </main>

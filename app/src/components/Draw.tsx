@@ -114,15 +114,23 @@ export default function Draw() {
     return { person: PEOPLE[pi], quartile: assignments[qi].quartile };
   }, [assignments, revealed, done]);
 
-  // Which pot the wheel should display.
-  const wheelQuartile: Quartile =
-    phase === "revealed" && latest
-      ? latest.quartile
-      : ((Math.min(3, Math.floor(revealed / N)) + 1) as Quartile);
-  const wheelTeams = useMemo(
-    () => teamsInQuartile(wheelQuartile),
-    [wheelQuartile]
-  );
+  // Teams shown on the wheel: the current pot, minus the teams already picked.
+  // The just-drawn team stays on the wheel during its reveal (so it's visible
+  // landing under the pointer), then disappears once we move to the next spin.
+  const wheel = useMemo(() => {
+    if (!assignments) return { quartile: 1 as Quartile, teams: [] as Team[] };
+    const refStep = phase === "revealed" ? Math.max(0, revealed - 1) : revealed;
+    const potIdx = Math.min(3, Math.floor(refStep / N));
+    const quartile = (potIdx + 1) as Quartile;
+    const removed = new Set<string>();
+    for (let s = potIdx * N; s < refStep; s++) {
+      removed.add(assignments[potIdx].pairs[s % N].team.id);
+    }
+    return {
+      quartile,
+      teams: teamsInQuartile(quartile).filter((t) => !removed.has(t.id)),
+    };
+  }, [assignments, phase, revealed]);
 
   // Per-person/quartile (scoreboard) and team→owner (wheel) maps.
   const { grid, ownerByTeam } = useMemo(() => {
@@ -162,12 +170,13 @@ export default function Draw() {
 
   const spin = useCallback(() => {
     if (busyRef.current || !assignments || phase !== "idle" || done) return;
-    busyRef.current = true;
     const { qi, pi } = stepToCoord(revealed);
     const team = assignments[qi].pairs[pi].team;
-    const potTeams = teamsInQuartile(assignments[qi].quartile);
-    const idx = potTeams.findIndex((t) => t.id === team.id);
-    const seg = 360 / potTeams.length;
+    // Land on the team's slice within the *current* wheel (picked teams removed).
+    const idx = wheel.teams.findIndex((t) => t.id === team.id);
+    if (idx < 0) return;
+    busyRef.current = true;
+    const seg = 360 / wheel.teams.length;
     const targetCenter = (idx + 0.5) * seg;
 
     const reduce = prefersReducedMotion();
@@ -187,7 +196,7 @@ export default function Draw() {
       },
       reduce ? 60 : SPIN_MS + 200
     );
-  }, [assignments, phase, done, revealed]);
+  }, [assignments, phase, done, revealed, wheel]);
 
   const proceed = useCallback(() => {
     if (phase !== "revealed" || revealed >= TOTAL) return;
@@ -311,11 +320,11 @@ export default function Draw() {
       <section className="mt-4 grid items-center gap-5 rounded-2xl border border-pitch-line bg-pitch-surface p-5 lg:grid-cols-2 lg:p-7">
         <div className="pitch-stripes flex items-center justify-center rounded-xl py-4">
           <Wheel
-            teams={wheelTeams}
+            teams={wheel.teams}
             ownerByTeamId={ownerByTeam}
             rotation={rotation}
             durationMs={spinDuration}
-            potRoman={ROMAN[wheelQuartile - 1]}
+            potRoman={ROMAN[wheel.quartile - 1]}
             highlightTeamId={phase === "revealed" ? latest?.team.id : undefined}
           />
         </div>

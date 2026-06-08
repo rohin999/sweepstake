@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PEOPLE } from "../data/people";
+import { teamsInQuartile } from "../data/teams";
 import {
   runDraw,
   assignmentsToPicks,
   type QuartileAssignment,
 } from "../lib/draw";
 import type { Quartile, Team, Person } from "../lib/types";
+import Wheel from "./Wheel";
 
 const ROMAN = ["I", "II", "III", "IV"] as const;
 const POT_TAG: Record<Quartile, string> = {
@@ -17,6 +19,9 @@ const POT_TAG: Record<Quartile, string> = {
 const N = PEOPLE.length; // 12
 const TOTAL = N * 4; // 48
 const STORAGE_KEY = "wc26-draw-v1";
+const SPIN_MS = 4200;
+
+type Phase = "idle" | "spinning" | "revealed";
 
 interface RevealInfo {
   team: Team;
@@ -25,11 +30,14 @@ interface RevealInfo {
   personIndex: number;
 }
 
-// Map a flat step index (0..47) to (quartileIndex, personIndex).
 const stepToCoord = (step: number) => ({
   qi: Math.floor(step / N),
   pi: step % N,
 });
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export default function Draw() {
   const [seed, setSeed] = useState<number | null>(null);
@@ -37,14 +45,21 @@ export default function Draw() {
     null
   );
   const [revealed, setRevealed] = useState(0);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [rotation, setRotation] = useState(0);
+  const [spinDuration, setSpinDuration] = useState(0);
   const [locked, setLocked] = useState(false);
   const [copied, setCopied] = useState(false);
+
   const restoredRef = useRef(false);
+  const spinTimer = useRef<number | null>(null);
+  // Synchronous re-entrancy guard: blocks repeat spin() calls fired in the same
+  // burst (e.g. held spacebar) before React has re-rendered the phase.
+  const busyRef = useRef(false);
 
   const done = revealed >= TOTAL;
-  const potIndex = Math.min(3, Math.floor(revealed / N)); // pot of the next reveal
 
-  // --- Persistence: restore once on mount, save on change -------------------
+  // --- Persistence ----------------------------------------------------------
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
@@ -72,48 +87,14 @@ export default function Draw() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ seed, revealed, locked }));
   }, [seed, revealed, locked]);
 
-  // --- Actions --------------------------------------------------------------
-  const start = useCallback(() => {
-    const s = Date.now();
-    setSeed(s);
-    setAssignments(runDraw(PEOPLE, s));
-    setRevealed(0);
-    setLocked(false);
-  }, []);
-
-  const advance = useCallback(() => {
-    setRevealed((r) => Math.min(TOTAL, r + 1));
-  }, []);
-
-  const reset = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setAssignments(null);
-    setSeed(null);
-    setRevealed(0);
-    setLocked(false);
-    setCopied(false);
-  }, []);
-
-  // Keyboard control for the live host: Space / Enter reveals the next team
-  // (and locks at the end). Works whatever has focus — only typing is exempt,
-  // and secondary buttons (Reset, Copy) keep their own native behaviour.
   useEffect(() => {
-    if (!assignments) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space" && e.code !== "Enter") return;
-      const el = document.activeElement as HTMLElement | null;
-      const tag = el?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (tag === "BUTTON" && el?.dataset.advance !== "true") return;
-      e.preventDefault();
-      if (!done) advance();
-      else if (!locked) setLocked(true);
+    return () => {
+      if (spinTimer.current) clearTimeout(spinTimer.current);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [assignments, done, locked, advance]);
+  }, []);
 
-  // The team just revealed, for the centre stage.
+  // --- Derived --------------------------------------------------------------
+  // The team just drawn (shown in the card during the "revealed" phase).
   const latest = useMemo<RevealInfo | null>(() => {
     if (!assignments || revealed === 0) return null;
     const { qi, pi } = stepToCoord(revealed - 1);
@@ -126,31 +107,129 @@ export default function Draw() {
     };
   }, [assignments, revealed]);
 
-  // Who's up next, for the prompt and the control deck.
-  const next = useMemo(() => {
+  // Whose turn it is to draw (idle / spinning).
+  const current = useMemo(() => {
     if (!assignments || done) return null;
     const { qi, pi } = stepToCoord(revealed);
-    const a = assignments[qi];
-    return { person: a.pairs[pi].person, quartile: a.quartile };
+    return { person: PEOPLE[pi], quartile: assignments[qi].quartile };
   }, [assignments, revealed, done]);
 
-  // Per-person, per-quartile revealed teams for the scoreboard.
-  const grid = useMemo(() => {
-    const m = new Map<string, Team>();
+  // Which pot the wheel should display.
+  const wheelQuartile: Quartile =
+    phase === "revealed" && latest
+      ? latest.quartile
+      : ((Math.min(3, Math.floor(revealed / N)) + 1) as Quartile);
+  const wheelTeams = useMemo(
+    () => teamsInQuartile(wheelQuartile),
+    [wheelQuartile]
+  );
+
+  // Per-person/quartile (scoreboard) and team→owner (wheel) maps.
+  const { grid, ownerByTeam } = useMemo(() => {
+    const g = new Map<string, Team>();
+    const o = new Map<string, Person>();
     if (assignments) {
       for (let s = 0; s < revealed; s++) {
         const { qi, pi } = stepToCoord(s);
         const a = assignments[qi];
-        m.set(`${a.pairs[pi].person.id}|${a.quartile}`, a.pairs[pi].team);
+        const { person, team } = a.pairs[pi];
+        g.set(`${person.id}|${a.quartile}`, team);
+        o.set(team.id, person);
       }
     }
-    return m;
+    return { grid: g, ownerByTeam: o };
   }, [assignments, revealed]);
 
-  const exportJson = useMemo(() => {
-    if (!assignments) return "";
-    return JSON.stringify(assignmentsToPicks(PEOPLE, assignments), null, 2);
-  }, [assignments]);
+  const exportJson = useMemo(
+    () =>
+      assignments
+        ? JSON.stringify(assignmentsToPicks(PEOPLE, assignments), null, 2)
+        : "",
+    [assignments]
+  );
+
+  // --- Actions --------------------------------------------------------------
+  const start = useCallback(() => {
+    busyRef.current = false;
+    const s = Date.now();
+    setSeed(s);
+    setAssignments(runDraw(PEOPLE, s));
+    setRevealed(0);
+    setRotation(0);
+    setPhase("idle");
+    setLocked(false);
+  }, []);
+
+  const spin = useCallback(() => {
+    if (busyRef.current || !assignments || phase !== "idle" || done) return;
+    busyRef.current = true;
+    const { qi, pi } = stepToCoord(revealed);
+    const team = assignments[qi].pairs[pi].team;
+    const potTeams = teamsInQuartile(assignments[qi].quartile);
+    const idx = potTeams.findIndex((t) => t.id === team.id);
+    const seg = 360 / potTeams.length;
+    const targetCenter = (idx + 0.5) * seg;
+
+    const reduce = prefersReducedMotion();
+    const spins = reduce ? 0 : 5;
+    setSpinDuration(reduce ? 0 : SPIN_MS);
+    setRotation((prev) => {
+      const currentMod = ((prev % 360) + 360) % 360;
+      const desiredMod = ((360 - targetCenter) % 360 + 360) % 360;
+      const delta = (desiredMod - currentMod + 360) % 360;
+      return prev + spins * 360 + delta;
+    });
+    setPhase("spinning");
+    spinTimer.current = window.setTimeout(
+      () => {
+        setRevealed((r) => r + 1);
+        setPhase("revealed");
+      },
+      reduce ? 60 : SPIN_MS + 200
+    );
+  }, [assignments, phase, done, revealed]);
+
+  const proceed = useCallback(() => {
+    if (phase !== "revealed" || revealed >= TOTAL) return;
+    busyRef.current = false;
+    setPhase("idle");
+  }, [phase, revealed]);
+
+  const reset = useCallback(() => {
+    if (spinTimer.current) clearTimeout(spinTimer.current);
+    busyRef.current = false;
+    localStorage.removeItem(STORAGE_KEY);
+    setAssignments(null);
+    setSeed(null);
+    setRevealed(0);
+    setRotation(0);
+    setPhase("idle");
+    setLocked(false);
+    setCopied(false);
+  }, []);
+
+  // Keyboard control for the live host.
+  useEffect(() => {
+    if (!assignments) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return; // ignore key auto-repeat from a held key
+      if (e.code !== "Space" && e.code !== "Enter") return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "BUTTON" && el?.dataset.advance !== "true") return;
+      e.preventDefault();
+      if (done) {
+        if (!locked) setLocked(true);
+      } else if (phase === "idle") {
+        spin();
+      } else if (phase === "revealed") {
+        proceed();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [assignments, phase, done, locked, spin, proceed]);
 
   const copy = () => {
     navigator.clipboard?.writeText(exportJson);
@@ -171,9 +250,9 @@ export default function Draw() {
           The Draw
         </h2>
         <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-chalk-muted">
-          Four pots, twelve players, forty-eight teams. Each player lands one
-          team from every FIFA-ranking quartile — revealed one at a time, top
-          seeds first, underdogs last.
+          Four pots, twelve players, forty-eight teams. Spin the wheel for each
+          player in turn — they win one team from every FIFA-ranking quartile,
+          top seeds first, underdogs last.
         </p>
         <button
           onClick={start}
@@ -182,23 +261,24 @@ export default function Draw() {
           Start the draw
         </button>
         <p className="mt-4 text-xs uppercase tracking-widest text-chalk-muted">
-          Tip: press <span className="text-chalk">Space</span> to reveal each pick
+          Tip: press <span className="text-chalk">Space</span> to spin
         </p>
       </div>
     );
   }
+
+  const potIndex = Math.min(3, Math.floor(revealed / N));
 
   // -------------------------------------------------------------------------
   // Broadcast layout
   // -------------------------------------------------------------------------
   return (
     <div className="mx-auto max-w-6xl pb-4">
-      {/* Screen-reader announcement of each reveal. */}
       <div aria-live="polite" className="sr-only">
         {done
           ? "Draw complete. All 48 teams drawn."
-          : latest
-            ? `${latest.team.name} drawn to ${latest.person.name}`
+          : phase === "revealed" && latest
+            ? `${latest.team.name}, FIFA ranked ${latest.team.fifaRank}, drawn to ${latest.person.name}`
             : ""}
       </div>
 
@@ -227,12 +307,64 @@ export default function Draw() {
         </div>
       </div>
 
-      {/* Centre stage — the single big reveal */}
-      <section className="pitch-stripes relative mt-4 flex min-h-[19rem] flex-col overflow-hidden rounded-2xl border border-pitch-line bg-pitch-surface p-6 sm:min-h-[22rem]">
-        <Stage latest={latest} done={done} next={next} revealKey={revealed} />
+      {/* Stage: wheel on the left, info / infographic card on the right */}
+      <section className="mt-4 grid items-center gap-5 rounded-2xl border border-pitch-line bg-pitch-surface p-5 lg:grid-cols-2 lg:p-7">
+        <div className="pitch-stripes flex items-center justify-center rounded-xl py-4">
+          <Wheel
+            teams={wheelTeams}
+            ownerByTeamId={ownerByTeam}
+            rotation={rotation}
+            durationMs={spinDuration}
+            potRoman={ROMAN[wheelQuartile - 1]}
+            highlightTeamId={phase === "revealed" ? latest?.team.id : undefined}
+          />
+        </div>
+
+        <div className="min-h-[16rem] flex flex-col justify-center">
+          {done ? (
+            <div className="text-center lg:text-left">
+              <p className="font-display text-sm tracking-[0.35em] text-brand">
+                ALL 48 DRAWN
+              </p>
+              <h3 className="font-display mt-2 text-5xl font-semibold uppercase tracking-tight text-chalk">
+                Draw Complete
+              </h3>
+              <p className="mt-4 text-sm text-chalk-muted">
+                Every player has their four teams. Lock &amp; Save to freeze the
+                result.
+              </p>
+            </div>
+          ) : phase === "revealed" && latest ? (
+            <InfographicCard info={latest} />
+          ) : (
+            <div className="text-center lg:text-left">
+              <p className="font-display text-sm uppercase tracking-[0.3em] text-chalk-muted">
+                {phase === "spinning" ? "Spinning…" : "Now drawing for"}
+              </p>
+              <h3 className="font-display mt-2 flex items-center justify-center gap-3 text-5xl font-semibold uppercase tracking-tight text-chalk lg:justify-start sm:text-6xl">
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 rounded-full"
+                  style={{ background: current?.person.colour }}
+                />
+                {current?.person.name}
+              </h3>
+              <p className="font-display mt-2 text-sm uppercase tracking-[0.3em] text-brand">
+                {current ? POT_TAG[current.quartile] : ""}
+              </p>
+              {phase === "idle" && (
+                <p className="mt-5 text-sm text-chalk-muted">
+                  Press <span className="text-chalk">Spin</span> or{" "}
+                  <span className="text-chalk">Space</span> to draw their Pot{" "}
+                  {ROMAN[(current?.quartile ?? 1) - 1]} team.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
-      {/* Scoreboard — each player's four teams, named and spread out */}
+      {/* Scoreboard */}
       <section className="mt-4 overflow-hidden rounded-2xl border border-pitch-line">
         <div className="grid grid-cols-[minmax(6.5rem,1.2fr)_repeat(4,minmax(0,1fr))] bg-pitch-surface px-3 py-2.5 font-display text-[11px] uppercase tracking-widest text-chalk-muted">
           <span>Player</span>
@@ -243,7 +375,7 @@ export default function Draw() {
           ))}
         </div>
         {PEOPLE.map((person, pi) => {
-          const isLatestRow = latest?.personIndex === pi;
+          const isLatestRow = phase === "revealed" && latest?.personIndex === pi;
           return (
             <div
               key={person.id}
@@ -272,13 +404,7 @@ export default function Draw() {
                   >
                     {team ? (
                       <>
-                        <span
-                          role="img"
-                          aria-label={team.name}
-                          className="text-2xl leading-none"
-                        >
-                          {team.flag}
-                        </span>
+                        <span className="text-2xl leading-none">{team.flag}</span>
                         <span className="font-display text-[12px] uppercase leading-tight tracking-wide text-chalk sm:text-[13px]">
                           {team.name}
                         </span>
@@ -294,7 +420,7 @@ export default function Draw() {
         })}
       </section>
 
-      {/* Sticky control deck — primary action always reachable */}
+      {/* Sticky control deck */}
       <div className="sticky bottom-0 z-10 mt-4 -mx-4 border-t border-pitch-line bg-pitch/90 px-4 py-3 backdrop-blur">
         <div
           role="progressbar"
@@ -319,13 +445,23 @@ export default function Draw() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {!done && (
+          {!done && phase !== "revealed" && (
             <button
               data-advance="true"
-              onClick={advance}
+              onClick={spin}
+              disabled={phase === "spinning"}
+              className="rounded-lg bg-brand px-6 py-3 font-display text-base font-semibold uppercase tracking-wide text-pitch transition hover:bg-brand/90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-pitch"
+            >
+              {phase === "spinning" ? "Spinning…" : "Spin the wheel"}
+            </button>
+          )}
+          {!done && phase === "revealed" && (
+            <button
+              data-advance="true"
+              onClick={proceed}
               className="rounded-lg bg-brand px-6 py-3 font-display text-base font-semibold uppercase tracking-wide text-pitch transition hover:bg-brand/90 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-pitch"
             >
-              Reveal Next
+              Next Player
             </button>
           )}
           {done && !locked && (
@@ -343,10 +479,9 @@ export default function Draw() {
           >
             Reset
           </button>
-          {next && (
+          {!done && phase === "idle" && current && (
             <span className="font-display text-xs uppercase tracking-widest text-chalk-muted">
-              Next: <span className="text-chalk">{next.person.name}</span>
-              <span className="hidden sm:inline"> · press Space</span>
+              Up next: <span className="text-chalk">{current.person.name}</span>
             </span>
           )}
           <span className="ml-auto font-display text-sm uppercase tracking-widest tabular-nums text-chalk-muted">
@@ -385,94 +520,61 @@ export default function Draw() {
 }
 
 // ---------------------------------------------------------------------------
-// Centre stage: the big reveal, or a "who's next" prompt.
+// The infographic card for a drawn team.
 // ---------------------------------------------------------------------------
-function Stage({
-  latest,
-  done,
-  next,
-  revealKey,
-}: {
-  latest: RevealInfo | null;
-  done: boolean;
-  next: { person: Person; quartile: Quartile } | null;
-  revealKey: number;
-}) {
-  if (done) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <p className="font-display text-sm tracking-[0.35em] text-brand">
-          ALL 48 DRAWN
-        </p>
-        <h3 className="font-display mt-2 text-5xl font-semibold uppercase tracking-tight text-chalk sm:text-6xl">
-          Draw Complete
-        </h3>
-        <p className="mt-4 max-w-sm text-sm text-chalk-muted">
-          Every player has their four teams. Lock &amp; Save to freeze the
-          result, then it&rsquo;s into the group stage.
-        </p>
-      </div>
-    );
-  }
+function InfographicCard({ info }: { info: RevealInfo }) {
+  const { team, person, quartile } = info;
+  const rows: { label: string; value: string }[] = [
+    { label: "FIFA World Ranking", value: `#${team.fifaRank}` },
+    {
+      label: "Pot",
+      value: `${ROMAN[quartile - 1]} · ${POT_TAG[quartile]}`,
+    },
+    { label: "Group", value: team.group },
+  ];
 
-  // Before the first reveal: show who's first up.
-  if (!latest) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <p className="font-display text-sm tracking-[0.35em] text-chalk-muted">
-          FIRST UP
-        </p>
-        <h3 className="font-display mt-2 text-6xl font-semibold uppercase tracking-tight text-chalk sm:text-7xl">
-          {next?.person.name}
-        </h3>
-        <p className="font-display mt-2 text-sm uppercase tracking-[0.3em] text-brand">
-          {next ? POT_TAG[next.quartile] : ""}
-        </p>
-        <p className="mt-5 text-sm text-chalk-muted">
-          Press <span className="text-chalk">Reveal Next</span> or{" "}
-          <span className="text-chalk">Space</span>.
-        </p>
-      </div>
-    );
-  }
-
-  // Live reveal — keyed so it replays the animation each step.
   return (
-    <div
-      key={revealKey}
-      className="flex flex-1 flex-col items-center justify-center text-center"
-    >
-      <p className="font-display text-xs uppercase tracking-[0.3em] text-chalk-muted">
-        Pot {ROMAN[latest.quartile - 1]} · Group {latest.team.group} · FIFA #
-        {latest.team.fifaRank}
+    <div className="anim-cardin rounded-xl border border-pitch-line bg-pitch p-5">
+      <p className="font-display text-xs uppercase tracking-[0.3em] text-brand">
+        Team Drawn
       </p>
-
-      <div className="anim-flagpop anim-landglow relative mt-4 overflow-hidden rounded-2xl border border-pitch-line bg-pitch px-10 py-6">
-        <span
-          role="img"
-          aria-label={latest.team.name}
-          className="block text-[5rem] leading-none sm:text-[6.5rem]"
-        >
-          {latest.team.flag}
+      <div className="mt-2 flex items-center gap-4">
+        <span className="anim-flagpop anim-landglow rounded-lg border border-pitch-line bg-pitch-surface px-3 py-1.5 text-[3.25rem] leading-none">
+          {team.flag}
         </span>
-        <span
-          aria-hidden="true"
-          className="anim-sweep pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
-        />
+        <h3 className="font-display text-4xl font-semibold uppercase leading-none tracking-tight text-chalk sm:text-5xl">
+          {team.name}
+        </h3>
       </div>
 
-      <h3 className="anim-nameslide font-display mt-5 text-5xl font-semibold uppercase tracking-tight text-chalk sm:text-6xl">
-        {latest.team.name}
-      </h3>
+      <dl className="mt-5 divide-y divide-pitch-line">
+        {rows.map((r) => (
+          <div
+            key={r.label}
+            className="flex items-center justify-between py-2.5"
+          >
+            <dt className="font-display text-xs uppercase tracking-widest text-chalk-muted">
+              {r.label}
+            </dt>
+            <dd className="font-display text-base font-semibold uppercase tracking-wide tabular-nums text-chalk">
+              {r.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
-      <div className="anim-nameslide mt-4 flex items-center gap-2.5 font-display text-lg uppercase tracking-wide">
-        <span className="text-chalk-muted">→</span>
-        <span
-          aria-hidden="true"
-          className="h-3 w-3 rounded-full"
-          style={{ background: latest.person.colour }}
-        />
-        <span className="text-brand">{latest.person.name}</span>
+      <div className="mt-3 flex items-center justify-between rounded-lg bg-brand/10 px-3 py-3">
+        <span className="font-display text-xs uppercase tracking-widest text-chalk-muted">
+          Assigned to
+        </span>
+        <span className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-brand">
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 rounded-full"
+            style={{ background: person.colour }}
+          />
+          {person.name}
+        </span>
       </div>
     </div>
   );

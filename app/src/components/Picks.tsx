@@ -31,6 +31,17 @@ export default function Picks() {
           Twelve players, four teams each — one from every FIFA-ranking
           quartile.
         </p>
+        <div className="mt-3 flex items-center justify-center gap-2 text-xs text-chalk-muted sm:justify-start">
+          <span
+            aria-hidden="true"
+            className="inline-block h-2 w-8 shrink-0 rounded-full bg-brand"
+          />
+          <span>
+            <span className="text-chalk">% chance of winning</span> the
+            tournament — from bookmaker outright odds. Longer bar = stronger
+            favourite.
+          </span>
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-pitch-line">
@@ -72,10 +83,10 @@ export default function Picks() {
                         </span>
                         <div
                           className="mt-1 w-full max-w-[5.5rem] px-1"
-                          title={`Outright odds ${team.odds} — implied ${formatProbability(impliedProbability(team.odds))}`}
+                          title={`${formatProbability(impliedProbability(team.odds))} chance of winning (odds ${team.odds})`}
                         >
                           <div
-                            className="h-1 w-full overflow-hidden rounded-full bg-pitch-line"
+                            className="h-2 w-full overflow-hidden rounded-full bg-pitch-line"
                             role="presentation"
                           >
                             <div

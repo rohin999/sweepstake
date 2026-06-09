@@ -26,6 +26,40 @@ const SORTED_PEOPLE = [...PEOPLE].sort(
   (a, b) => potOneChance(b.id) - potOneChance(a.id)
 );
 
+// Subtle strength tint within tokens: bright lime for favourites, fading to
+// dim, then muted-grey for longshots. The % label is the source of truth.
+function thermoColour(fraction: number): string {
+  if (fraction >= 0.66) return "var(--color-brand)";
+  if (fraction >= 0.33) return "var(--color-brand-dim)";
+  return "var(--color-chalk-muted)";
+}
+
+// A slim vertical thermometer that fills bottom-to-top by win chance.
+function ThermoPill({ odds }: { odds: string }) {
+  const fraction = barFraction(odds);
+  const pct = formatProbability(impliedProbability(odds));
+  return (
+    <div
+      className="flex flex-col items-center justify-end gap-1"
+      title={`${pct} chance of winning (odds ${odds})`}
+    >
+      <div
+        className="relative h-12 w-2 overflow-hidden rounded-full bg-pitch-line"
+        role="img"
+        aria-label={`${pct} chance of winning`}
+      >
+        <div
+          className="progress-fill-y absolute inset-x-0 bottom-0 h-full rounded-full"
+          style={{ transform: `scaleY(${fraction})`, background: thermoColour(fraction) }}
+        />
+      </div>
+      <span className="text-[10px] leading-none tabular-nums text-chalk-muted">
+        {pct}
+      </span>
+    </div>
+  );
+}
+
 export default function Picks() {
   return (
     <div className="mx-auto max-w-6xl">
@@ -43,81 +77,71 @@ export default function Picks() {
         <div className="mt-3 flex items-center justify-center gap-2 text-xs text-chalk-muted sm:justify-start">
           <span
             aria-hidden="true"
-            className="inline-block h-2 w-8 shrink-0 rounded-full bg-brand"
-          />
+            className="relative inline-block h-5 w-2 shrink-0 overflow-hidden rounded-full bg-pitch-line"
+          >
+            <span className="absolute inset-x-0 bottom-0 h-3/4 rounded-full bg-brand" />
+          </span>
           <span>
             <span className="text-chalk">% chance of winning</span> the
-            tournament — from bookmaker outright odds. Longer bar = stronger
+            tournament — from bookmaker outright odds. Fuller bar = stronger
             favourite.
           </span>
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-pitch-line">
-        <div className="grid grid-cols-[minmax(6.5rem,1.2fr)_repeat(4,minmax(0,1fr))] bg-pitch-surface px-3 py-2.5 font-display text-[11px] uppercase tracking-widest text-chalk-muted">
-          <span>Player</span>
-          {([1, 2, 3, 4] as Quartile[]).map((q) => (
-            <span key={q} className="text-center">
-              Pot {ROMAN[q - 1]}
-            </span>
-          ))}
-        </div>
-        {SORTED_PEOPLE.map((person) => {
-          const slots = teamsByPerson.get(person.id) ?? [];
-          return (
-            <div
-              key={person.id}
-              className="grid grid-cols-[minmax(6.5rem,1.2fr)_repeat(4,minmax(0,1fr))] items-stretch border-t border-pitch-line"
-            >
-              <span className="flex items-center gap-2 px-3 py-2 font-display text-sm uppercase tracking-wide">
-                <span
-                  aria-hidden="true"
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: person.colour }}
-                />
-                <span className="truncate text-chalk">{person.name}</span>
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <section className="min-w-[40rem] overflow-hidden rounded-2xl border border-pitch-line sm:min-w-0">
+          <div className="grid grid-cols-[minmax(7rem,1.2fr)_repeat(4,minmax(5rem,1fr))] bg-pitch-surface px-3 py-2.5 font-display text-[11px] uppercase tracking-widest text-chalk-muted">
+            <span className="sticky left-0 z-10 bg-pitch-surface">Player</span>
+            {([1, 2, 3, 4] as Quartile[]).map((q) => (
+              <span key={q} className="text-center">
+                Pot {ROMAN[q - 1]}
               </span>
-              {([1, 2, 3, 4] as Quartile[]).map((q) => {
-                const team = slots[q - 1];
-                return (
-                  <div
-                    key={q}
-                    className="flex flex-col items-center justify-center gap-1 border-l border-pitch-line px-1 py-2 text-center"
-                  >
-                    {team ? (
-                      <>
-                        <span className="text-2xl leading-none">{team.flag}</span>
-                        <span className="font-display text-[12px] uppercase leading-tight tracking-wide text-chalk sm:text-[13px]">
-                          {team.name}
-                        </span>
-                        <div
-                          className="mt-1 w-full max-w-[5.5rem] px-1"
-                          title={`${formatProbability(impliedProbability(team.odds))} chance of winning (odds ${team.odds})`}
-                        >
-                          <div
-                            className="h-2 w-full overflow-hidden rounded-full bg-pitch-line"
-                            role="presentation"
-                          >
-                            <div
-                              className="progress-fill h-full rounded-full bg-brand"
-                              style={{ transform: `scaleX(${barFraction(team.odds)})` }}
-                            />
+            ))}
+          </div>
+          {SORTED_PEOPLE.map((person) => {
+            const slots = teamsByPerson.get(person.id) ?? [];
+            return (
+              <div
+                key={person.id}
+                className="grid grid-cols-[minmax(7rem,1.2fr)_repeat(4,minmax(5rem,1fr))] items-stretch border-t border-pitch-line transition-colors hover:bg-pitch-elevated"
+              >
+                <span
+                  className="sticky left-0 z-10 flex items-center gap-2 border-l-[3px] bg-pitch-surface px-3 py-2 font-display text-sm uppercase tracking-wide"
+                  style={{ borderLeftColor: person.colour }}
+                >
+                  <span className="truncate text-chalk">{person.name}</span>
+                </span>
+                {([1, 2, 3, 4] as Quartile[]).map((q) => {
+                  const team = slots[q - 1];
+                  return (
+                    <div
+                      key={q}
+                      className="flex items-stretch justify-center gap-1.5 border-l border-pitch-line px-1.5 py-2.5"
+                    >
+                      {team ? (
+                        <>
+                          <div className="flex min-w-0 flex-1 flex-col items-center justify-start gap-1 text-center">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pitch-elevated text-xl leading-none ring-1 ring-pitch-line">
+                              {team.flag}
+                            </span>
+                            <span className="font-display text-[11px] uppercase leading-tight tracking-wide text-chalk sm:text-[12px]">
+                              {team.name}
+                            </span>
                           </div>
-                          <span className="mt-0.5 block text-[10px] leading-none tabular-nums text-chalk-muted">
-                            {formatProbability(impliedProbability(team.odds))}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-sm text-pitch-line">—</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </section>
+                          <ThermoPill odds={team.odds} />
+                        </>
+                      ) : (
+                        <span className="self-center text-sm text-pitch-line">—</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </section>
+      </div>
     </div>
   );
 }

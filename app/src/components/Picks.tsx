@@ -17,6 +17,15 @@ for (const pick of PICKS) {
   teamsByPerson.set(pick.personId, slots);
 }
 
+// Order players by their Pot I team's % chance of winning (strongest first).
+const potOneChance = (personId: string): number => {
+  const potOne = teamsByPerson.get(personId)?.[0];
+  return potOne ? impliedProbability(potOne.odds) : -1;
+};
+const SORTED_PEOPLE = [...PEOPLE].sort(
+  (a, b) => potOneChance(b.id) - potOneChance(a.id)
+);
+
 export default function Picks() {
   return (
     <div className="mx-auto max-w-6xl">
@@ -53,7 +62,7 @@ export default function Picks() {
             </span>
           ))}
         </div>
-        {PEOPLE.map((person) => {
+        {SORTED_PEOPLE.map((person) => {
           const slots = teamsByPerson.get(person.id) ?? [];
           return (
             <div

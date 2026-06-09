@@ -1,8 +1,8 @@
 const MAIN_PRIZES = [
-  { place: "1st", label: "Winner", amount: "£270", accent: true },
-  { place: "2nd", label: "Runner-up", amount: "£90", accent: false },
-  { place: "3rd", label: "Third", amount: "£40", accent: false },
-  { place: "4th", label: "Fourth", amount: "£20", accent: false },
+  { place: "1st", label: "Winner", amount: "£270", accent: true, icon: "🏆" },
+  { place: "2nd", label: "Runner-up", amount: "£90", accent: false, icon: "🥈" },
+  { place: "3rd", label: "Third", amount: "£40", accent: false, icon: "🥉" },
+  { place: "4th", label: "Fourth", amount: "£20", accent: false, icon: "🎖️" },
 ] as const;
 
 const BONUS_PRIZES = [
@@ -57,6 +57,36 @@ export default function PrizesInfo() {
         </p>
       </section>
 
+      {/* Podium motif (top 3) — decorative; data is announced in the list below */}
+      <section className="mb-8" aria-hidden="true">
+        <div className="flex items-end justify-center gap-2 sm:gap-4">
+          {/* 2nd */}
+          <div className="flex w-20 flex-col items-center sm:w-28">
+            <span className="text-3xl">🥈</span>
+            <div className="mt-2 flex h-16 w-full items-start justify-center rounded-t-lg border border-pitch-line bg-pitch-surface pt-2 font-display text-sm text-chalk-muted">
+              £90
+            </div>
+          </div>
+          {/* 1st */}
+          <div className="flex w-24 flex-col items-center sm:w-32">
+            <span className="text-5xl [filter:drop-shadow(0_0_10px_color-mix(in_srgb,var(--color-brand)_55%,transparent))]">
+              🏆
+            </span>
+            <div className="mt-2 flex h-24 w-full items-start justify-center rounded-t-lg border border-brand-dim bg-pitch-elevated pt-2 font-display text-lg font-semibold text-brand">
+              £270
+            </div>
+          </div>
+          {/* 3rd */}
+          <div className="flex w-20 flex-col items-center sm:w-28">
+            <span className="text-3xl">🥉</span>
+            <div className="mt-2 flex h-12 w-full items-start justify-center rounded-t-lg border border-pitch-line bg-pitch-surface pt-2 font-display text-sm text-chalk-muted">
+              £40
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto h-1 max-w-md rounded-full bg-pitch-line" />
+      </section>
+
       {/* Main prizes */}
       <section className="mb-8">
         <h3 className="font-display mb-3 text-lg font-semibold uppercase tracking-wide text-chalk">
@@ -66,25 +96,35 @@ export default function PrizesInfo() {
           {MAIN_PRIZES.map((p) => (
             <li
               key={p.place}
-              className="flex items-center justify-between border-t border-pitch-line px-5 py-4 first:border-t-0"
+              className={`flex items-center justify-between border-t border-pitch-line px-5 py-4 first:border-t-0 ${
+                p.accent ? "bg-pitch-elevated/60" : ""
+              }`}
             >
               <span className="flex items-center gap-4">
                 <span
-                  className={`font-display flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                  className={`font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg ${
                     p.accent
-                      ? "bg-brand text-pitch"
-                      : "border border-pitch-line text-chalk-muted"
+                      ? "bg-brand text-pitch shadow-[0_0_16px_color-mix(in_srgb,var(--color-brand)_45%,transparent)]"
+                      : "border border-pitch-line"
                   }`}
+                  aria-hidden="true"
                 >
-                  {p.place}
+                  {p.icon}
                 </span>
-                <span className="font-display text-base uppercase tracking-wide text-chalk">
-                  {p.label}
+                <span className="flex flex-col">
+                  <span className="font-display text-base uppercase tracking-wide text-chalk">
+                    {p.label}
+                  </span>
+                  <span className="font-display text-[11px] uppercase tracking-widest text-chalk-muted">
+                    {p.place} place
+                  </span>
                 </span>
               </span>
               <span
-                className={`font-display text-2xl font-semibold tabular-nums sm:text-3xl ${
-                  p.accent ? "text-brand" : "text-chalk"
+                className={`font-display font-semibold tabular-nums ${
+                  p.accent
+                    ? "text-3xl text-brand sm:text-4xl"
+                    : "text-2xl text-chalk sm:text-3xl"
                 }`}
               >
                 {p.amount}

@@ -18,7 +18,7 @@ const BONUS_PRIZES = [
   },
   {
     title: "Goal of the tournament",
-    desc: "^^",
+    desc: "",
     amount: "£20",
   },
 ] as const;

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import Picks from "./components/Picks";
-import Standings from "./components/Standings";
+import PrizesInfo from "./components/PrizesInfo";
 import Bracket from "./components/Bracket";
 
-type Tab = "picks" | "standings" | "bracket";
+type Tab = "picks" | "prizes" | "bracket";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "picks", label: "Picks" },
-  { id: "standings", label: "Standings" },
+  { id: "prizes", label: "Prizes" },
   { id: "bracket", label: "Bracket" },
 ];
 
@@ -42,7 +42,7 @@ export default function App() {
       </header>
       <main className="px-4 py-8">
         {tab === "picks" && <Picks />}
-        {tab === "standings" && <Standings />}
+        {tab === "prizes" && <PrizesInfo />}
         {tab === "bracket" && <Bracket />}
       </main>
     </div>

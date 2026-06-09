@@ -1,6 +1,7 @@
 import { PEOPLE } from "../data/people";
 import { PICKS } from "../data/picks";
 import { TEAMS_BY_ID } from "../data/teams";
+import { barFraction, formatProbability, impliedProbability } from "../lib/odds";
 import type { Quartile, Team } from "../lib/types";
 
 const ROMAN = ["I", "II", "III", "IV"] as const;
@@ -69,6 +70,23 @@ export default function Picks() {
                         <span className="font-display text-[12px] uppercase leading-tight tracking-wide text-chalk sm:text-[13px]">
                           {team.name}
                         </span>
+                        <div
+                          className="mt-1 w-full max-w-[5.5rem] px-1"
+                          title={`Outright odds ${team.odds} — implied ${formatProbability(impliedProbability(team.odds))}`}
+                        >
+                          <div
+                            className="h-1 w-full overflow-hidden rounded-full bg-pitch-line"
+                            role="presentation"
+                          >
+                            <div
+                              className="progress-fill h-full rounded-full bg-brand"
+                              style={{ transform: `scaleX(${barFraction(team.odds)})` }}
+                            />
+                          </div>
+                          <span className="mt-0.5 block text-[10px] leading-none tabular-nums text-chalk-muted">
+                            {formatProbability(impliedProbability(team.odds))}
+                          </span>
+                        </div>
                       </>
                     ) : (
                       <span className="text-sm text-pitch-line">—</span>

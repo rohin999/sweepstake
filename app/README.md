@@ -17,17 +17,15 @@ npm run preview  # serve the production build locally
 2. Press **Spin the wheel** (or **Space**) to draw each player's team — pot by pot, top seeds first, underdogs last.
 3. The drawn team lands under the pointer; an infographic card shows its ranking, pot, group, and who it's assigned to.
 4. Press **Next Player** (or **Space**) to continue.
-5. When all 48 are drawn, click **Lock & Save** and copy the exported JSON into `src/data/picks.ts` as the `PICKS` array, then commit. The Standings tab comes alive automatically.
+5. When all 48 are drawn, click **Lock & Save** and copy the exported JSON into `src/data/picks.ts` as the `PICKS` array, then commit. The Picks tab updates automatically.
 
 ## Data files
 
 | File | What it holds | When to edit |
 |---|---|---|
 | `src/data/people.ts` | The 12 players | Before the draw |
-| `src/data/teams.ts` | 48 teams, FIFA ranks, real groups | Refresh `fifaRank` from the 11 Jun FIFA update if needed |
+| `src/data/teams.ts` | 48 teams, FIFA ranks, real groups, outright odds | Refresh `fifaRank`/`odds` if they move |
 | `src/data/picks.ts` | Draw result | Once, after the live draw |
-| `src/data/results.ts` | Match results | After each match day during the tournament |
-| `src/data/scoring.ts` | Points config | If you change the rules |
 
 ## Deploy
 

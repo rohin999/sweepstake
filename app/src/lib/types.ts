@@ -1,14 +1,5 @@
 export type Quartile = 1 | 2 | 3 | 4;
 
-export type Stage =
-  | "GROUP"
-  | "R32"
-  | "R16"
-  | "QF"
-  | "SF"
-  | "FINAL"
-  | "WINNER";
-
 export interface Team {
   id: string; // "ARG"
   name: string; // "Argentina"
@@ -16,6 +7,7 @@ export interface Team {
   fifaRank: number; // global rank, for display
   quartile: Quartile; // computed by re-ranking the 48
   group: string; // "A".."L"
+  odds: string; // fractional odds to win the tournament, e.g. "9/2"
 }
 
 export interface Person {
@@ -27,14 +19,4 @@ export interface Person {
 export interface Pick {
   personId: string;
   teamIds: [string, string, string, string]; // one per quartile, in quartile order
-}
-
-export interface TeamResult {
-  teamId: string;
-  groupWins: number;
-  groupDraws: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  stageReached: Stage;
-  eliminated: boolean;
 }

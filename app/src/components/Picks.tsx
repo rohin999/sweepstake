@@ -99,25 +99,17 @@ export default function Picks() {
               </span>
             ))}
           </div>
-          {SORTED_PEOPLE.map((person, idx) => {
+          {SORTED_PEOPLE.map((person) => {
             const slots = teamsByPerson.get(person.id) ?? [];
-            const isFavourite = idx === 0;
             return (
               <div
                 key={person.id}
-                className={`grid grid-cols-[minmax(7rem,1.2fr)_repeat(4,minmax(5rem,1fr))] items-stretch border-t border-pitch-line transition-colors hover:bg-pitch-elevated ${
-                  isFavourite ? "bg-pitch-elevated/60" : ""
-                }`}
+                className="grid grid-cols-[minmax(7rem,1.2fr)_repeat(4,minmax(5rem,1fr))] items-stretch border-t border-pitch-line transition-colors hover:bg-pitch-elevated"
               >
                 <span
                   className="sticky left-0 z-10 flex items-center gap-2 border-l-[3px] bg-pitch-surface px-3 py-2 font-display text-sm uppercase tracking-wide"
                   style={{ borderLeftColor: person.colour }}
                 >
-                  {isFavourite && (
-                    <span aria-label="Current favourite" title="Current favourite">
-                      ⭐
-                    </span>
-                  )}
                   <span className="truncate text-chalk">{person.name}</span>
                 </span>
                 {([1, 2, 3, 4] as Quartile[]).map((q) => {

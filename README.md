@@ -18,14 +18,6 @@ A web app for a 12-person, 4-teams-each World Cup sweepstakes.
 | Main prizes | 1st £270 · 2nd £90 · 3rd £40 · 4th £20 |
 | Bonus prizes | Most goals conceded £20 · Fastest goal £20 · Goal of the tournament £20 |
 
-## Running locally
-
-```bash
-cd app
-npm install
-npm run dev     # http://localhost:5173
-```
-
 ## Data files
 
 | File | What it holds |

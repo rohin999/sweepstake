@@ -156,6 +156,40 @@ body {
   transition: transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
+/* Vertical progress fill: scaleY from the bottom (sibling to .progress-fill). */
+.progress-fill-y {
+  transform-origin: bottom center;
+  transition: transform 360ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+/* Soft vignette strip under the sticky header for depth. */
+.header-fade {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-pitch) 92%, transparent),
+    transparent
+  );
+}
+
+/* Ghosted bracket lines on the Bracket "coming soon" page. */
+.bracket-ghost {
+  --line: color-mix(in srgb, var(--color-pitch-line) 70%, transparent);
+}
+
+/* Gentle, looping shimmer for the coming-soon bracket (very low energy). */
+@keyframes ghostpulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+.anim-ghostpulse {
+  animation: ghostpulse 3.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-sweep,
   .anim-flagpop,
@@ -163,10 +197,12 @@ body {
   .anim-rowflash,
   .anim-landglow,
   .anim-cardin,
-  .live-dot {
+  .live-dot,
+  .anim-ghostpulse {
     animation: none !important;
   }
-  .progress-fill {
+  .progress-fill,
+  .progress-fill-y {
     transition: none !important;
   }
 }

@@ -13,6 +13,6 @@ export const PEOPLE: Person[] = [
   { id: "p08", name: "Rithik", colour: "#3b82f6" },
   { id: "p09", name: "Vinay", colour: "#6366f1" },
   { id: "p10", name: "Viren", colour: "#a855f7" },
-  { id: "p11", name: "Ishan", colour: "#ec4899" },
+  { id: "p11", name: "Khem", colour: "#ec4899" },
   { id: "p12", name: "Rohin", colour: "#f43f5e" },
 ];

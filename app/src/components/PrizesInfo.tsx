@@ -1,3 +1,9 @@
+import { TEAMS_BY_ID } from "../data/teams";
+import { MOST_CONCEDED, FASTEST_GOAL } from "../data/bonusStats";
+import { buildOwnerMap } from "../lib/owners";
+
+const ownerByTeamId = buildOwnerMap();
+
 const MAIN_PRIZES = [
   { place: "1st", label: "Winner", amount: "£270", accent: true, icon: "🏆" },
   { place: "2nd", label: "Runner-up", amount: "£90", accent: false, icon: "🥈" },
@@ -5,21 +11,59 @@ const MAIN_PRIZES = [
   { place: "4th", label: "Fourth", amount: "£20", accent: false, icon: "🎖️" },
 ] as const;
 
+function MostConcededLeader() {
+  if (!MOST_CONCEDED) return null;
+  const team = TEAMS_BY_ID[MOST_CONCEDED.teamId];
+  const opponent = TEAMS_BY_ID[MOST_CONCEDED.opponentTeamId];
+  const owner = ownerByTeamId.get(MOST_CONCEDED.teamId);
+  if (!team || !opponent) return null;
+  return (
+    <p className="mt-3 border-t border-pitch-line pt-3 text-xs text-chalk-muted">
+      <span className="font-display uppercase tracking-wide text-chalk">
+        {team.flag} {team.name}
+      </span>
+      {owner && <span> ({owner.name})</span>}
+      {" — "}
+      {MOST_CONCEDED.goalsConceded} conceded vs {opponent.flag} {opponent.name}
+    </p>
+  );
+}
+
+function FastestGoalLeader() {
+  if (!FASTEST_GOAL) return null;
+  const team = TEAMS_BY_ID[FASTEST_GOAL.teamId];
+  const owner = ownerByTeamId.get(FASTEST_GOAL.teamId);
+  if (!team) return null;
+  return (
+    <p className="mt-3 border-t border-pitch-line pt-3 text-xs text-chalk-muted">
+      <span className="font-display uppercase tracking-wide text-chalk">
+        {team.flag} {team.name}
+      </span>
+      {owner && <span> ({owner.name})</span>}
+      {" — "}
+      {FASTEST_GOAL.minute}&rsquo;
+    </p>
+  );
+}
+
 const BONUS_PRIZES = [
   {
     title: "Leakiest defence",
     desc: "Team with the most goals conceded in a match",
     amount: "£20",
+    Leader: MostConcededLeader,
   },
   {
     title: "Fastest goal",
     desc: "Quickest goal of the tournament",
     amount: "£20",
+    Leader: FastestGoalLeader,
   },
   {
     title: "Goal of the tournament",
     desc: "",
     amount: "£20",
+    Leader: undefined,
   },
 ] as const;
 
@@ -152,6 +196,7 @@ export default function PrizesInfo() {
                 {b.title}
               </span>
               <span className="mt-1 text-xs text-chalk-muted">{b.desc}</span>
+              {b.Leader && <b.Leader />}
             </div>
           ))}
         </div>

@@ -142,7 +142,7 @@ export default function Draw() {
                               </span>
                             )}
                           </div>
-                          <ThermoPill odds={team.odds} />
+                          {!eliminated && <ThermoPill odds={team.odds} />}
                         </>
                       ) : (
                         <span className="self-center text-sm text-pitch-line">—</span>

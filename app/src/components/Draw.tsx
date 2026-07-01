@@ -36,13 +36,13 @@ function thermoColour(fraction: number): string {
 }
 
 // A slim vertical thermometer that fills bottom-to-top by win chance.
-function ThermoPill({ odds }: { odds: string }) {
+function ThermoPill({ odds }: { odds: number }) {
   const fraction = barFraction(odds);
   const pct = formatProbability(impliedProbability(odds));
   return (
     <div
       className="flex flex-col items-center justify-end gap-1"
-      title={`${pct} chance of winning (odds ${odds})`}
+      title={`${pct} chance of winning (odds ${odds.toFixed(2)})`}
     >
       <div
         className="relative h-12 w-2 overflow-hidden rounded-full bg-pitch-line"

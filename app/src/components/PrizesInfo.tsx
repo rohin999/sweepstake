@@ -8,7 +8,7 @@ const MAIN_PRIZES = [
 const BONUS_PRIZES = [
   {
     title: "Leakiest defence",
-    desc: "Team with the most goals conceded",
+    desc: "Team with the most goals conceded in a match",
     amount: "£20",
   },
   {

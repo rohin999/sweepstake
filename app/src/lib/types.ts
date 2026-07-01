@@ -7,7 +7,7 @@ export interface Team {
   fifaRank: number; // global rank, for display
   quartile: Quartile; // computed by re-ranking the 48
   group: string; // "A".."L"
-  odds: string; // fractional odds to win the tournament, e.g. "9/2"
+  odds: number; // decimal odds to win the tournament, e.g. 5.5 (implied probability = 1/odds)
 }
 
 export interface Person {

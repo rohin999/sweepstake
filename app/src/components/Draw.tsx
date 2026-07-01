@@ -1,6 +1,7 @@
 import { PEOPLE } from "../data/people";
 import { PICKS } from "../data/picks";
 import { TEAMS_BY_ID } from "../data/teams";
+import { isEliminated } from "../data/matches";
 import { barFraction, formatProbability, impliedProbability } from "../lib/odds";
 import type { Quartile, Team } from "../lib/types";
 
@@ -60,7 +61,7 @@ function ThermoPill({ odds }: { odds: string }) {
   );
 }
 
-export default function Picks() {
+export default function Draw() {
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 text-center sm:text-left">
@@ -68,7 +69,7 @@ export default function Picks() {
           WORLD CUP 2026
         </p>
         <h2 className="font-display mt-2 text-4xl font-semibold uppercase tracking-tight text-chalk sm:text-5xl">
-          The Picks
+          The Draw
         </h2>
         <p className="mt-3 text-sm text-chalk-muted">
           Twelve players, four teams each — one from every FIFA-ranking
@@ -114,6 +115,7 @@ export default function Picks() {
                 </span>
                 {([1, 2, 3, 4] as Quartile[]).map((q) => {
                   const team = slots[q - 1];
+                  const eliminated = team ? isEliminated(team.id) : false;
                   return (
                     <div
                       key={q}
@@ -121,13 +123,24 @@ export default function Picks() {
                     >
                       {team ? (
                         <>
-                          <div className="flex min-w-0 flex-1 flex-col items-center justify-start gap-1 text-center">
+                          <div
+                            className={`flex min-w-0 flex-1 flex-col items-center justify-start gap-1 text-center ${eliminated ? "opacity-50" : ""}`}
+                          >
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pitch-elevated text-xl leading-none ring-1 ring-pitch-line">
                               {team.flag}
                             </span>
-                            <span className="font-display text-[11px] uppercase leading-tight tracking-wide text-chalk sm:text-[12px]">
+                            <span
+                              className={`font-display text-[11px] uppercase leading-tight tracking-wide sm:text-[12px] ${
+                                eliminated ? "text-chalk-muted line-through" : "text-chalk"
+                              }`}
+                            >
                               {team.name}
                             </span>
+                            {eliminated && (
+                              <span className="rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest text-chalk-muted">
+                                Out
+                              </span>
+                            )}
                           </div>
                           <ThermoPill odds={team.odds} />
                         </>

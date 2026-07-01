@@ -20,3 +20,23 @@ export interface Pick {
   personId: string;
   teamIds: [string, string, string, string]; // one per quartile, in quartile order
 }
+
+export type KnockoutRound = "R32" | "R16" | "QF" | "SF" | "THIRD" | "FINAL";
+
+export interface KnockoutMatch {
+  round: KnockoutRound;
+  slot: number; // position within the round, 0-indexed in bracket draw order
+  matchNum?: number; // openfootball's match number, kept for traceability
+  team1Id?: string; // undefined = not yet decided (TBD)
+  team2Id?: string;
+  team1Placeholder?: string; // raw "W80"/"L101" string while unresolved
+  team2Placeholder?: string;
+  score1?: number; // the score that decided the match (penalties if shootout, else et, else ft)
+  score2?: number;
+  ftScore1?: number; // full-time score, kept even when the match went to penalties
+  ftScore2?: number;
+  wentToPenalties?: boolean;
+  winnerId?: string;
+  date?: string; // ISO date, e.g. "2026-07-04"
+  venue?: string;
+}

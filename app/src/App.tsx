@@ -1,18 +1,18 @@
 import { useState } from "react";
-import Picks from "./components/Picks";
+import Draw from "./components/Draw";
 import PrizesInfo from "./components/PrizesInfo";
 import Bracket from "./components/Bracket";
 
-type Tab = "picks" | "prizes" | "bracket";
+type Tab = "draw" | "prizes" | "bracket";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "picks", label: "Picks" },
+  { id: "draw", label: "Draw" },
   { id: "prizes", label: "Prizes" },
   { id: "bracket", label: "Bracket" },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("picks");
+  const [tab, setTab] = useState<Tab>("draw");
 
   return (
     <div className="pitch-stripes flex min-h-[100dvh] flex-col">
@@ -49,7 +49,7 @@ export default function App() {
       <main className="flex-1 px-4 py-8">
         {/* key={tab} remounts the panel so .anim-cardin replays on each switch */}
         <div key={tab} className="anim-cardin">
-          {tab === "picks" && <Picks />}
+          {tab === "draw" && <Draw />}
           {tab === "prizes" && <PrizesInfo />}
           {tab === "bracket" && <Bracket />}
         </div>

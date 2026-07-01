@@ -1,0 +1,46 @@
+name: Update bracket
+
+on:
+  schedule:
+    # 09:00 UTC daily. Most matches during this window of the tournament kick off from
+    # ~17:00 UTC onward and the last games of a day typically finish by ~05:00 UTC the
+    # next morning (US evening kickoffs), so this gives a comfortable buffer after the
+    # prior day's matches are finalized before pulling the day's update.
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-bracket
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run update-bracket
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/data/matches.ts
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update bracket ($(date -u +%Y-%m-%d))"
+            git push
+          fi

@@ -44,7 +44,7 @@ function ThermoPill({ odds, invisible }: { odds: number; invisible?: boolean }) 
   const pct = formatProbability(impliedProbability(odds));
   return (
     <div
-      className={`flex flex-col items-center justify-end gap-1 ${invisible ? "invisible" : ""}`}
+      className={`flex w-9 shrink-0 flex-col items-center justify-end gap-1 ${invisible ? "invisible" : ""}`}
       title={invisible ? undefined : `${pct} chance of winning (odds ${odds.toFixed(2)})`}
     >
       <div
@@ -126,6 +126,9 @@ export default function Draw() {
                     >
                       {team ? (
                         <>
+                          {/* Mirrors the pill's width on the left so the flag/name block
+                              centers in the whole cell, not just the space left of the pill. */}
+                          <div aria-hidden="true" className="w-9 shrink-0" />
                           <div
                             className={`flex min-w-0 flex-1 flex-col items-center justify-start gap-1 text-center ${eliminated ? "opacity-50" : ""}`}
                           >

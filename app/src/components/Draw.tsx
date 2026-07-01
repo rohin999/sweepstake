@@ -35,14 +35,17 @@ function thermoColour(fraction: number): string {
   return "var(--color-chalk-muted)";
 }
 
-// A slim vertical thermometer that fills bottom-to-top by win chance.
-function ThermoPill({ odds }: { odds: number }) {
+// A slim vertical thermometer that fills bottom-to-top by win chance. Always takes
+// up its layout slot even when `invisible` (eliminated teams) so cells stay the
+// same shape whether or not a team is still alive — only visibility toggles, not
+// presence, which is what keeps every row/column aligned.
+function ThermoPill({ odds, invisible }: { odds: number; invisible?: boolean }) {
   const fraction = barFraction(odds);
   const pct = formatProbability(impliedProbability(odds));
   return (
     <div
-      className="flex flex-col items-center justify-end gap-1"
-      title={`${pct} chance of winning (odds ${odds.toFixed(2)})`}
+      className={`flex flex-col items-center justify-end gap-1 ${invisible ? "invisible" : ""}`}
+      title={invisible ? undefined : `${pct} chance of winning (odds ${odds.toFixed(2)})`}
     >
       <div
         className="relative h-12 w-2 overflow-hidden rounded-full bg-pitch-line"
@@ -136,13 +139,15 @@ export default function Draw() {
                             >
                               {team.name}
                             </span>
-                            {eliminated && (
-                              <span className="rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest text-chalk-muted">
-                                Out
-                              </span>
-                            )}
+                            <span
+                              className={`rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest text-chalk-muted ${
+                                eliminated ? "" : "invisible"
+                              }`}
+                            >
+                              Out
+                            </span>
                           </div>
-                          {!eliminated && <ThermoPill odds={team.odds} />}
+                          <ThermoPill odds={team.odds} invisible={eliminated} />
                         </>
                       ) : (
                         <span className="self-center text-sm text-pitch-line">—</span>

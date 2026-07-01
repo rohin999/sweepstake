@@ -2,11 +2,8 @@ name: Update bracket
 
 on:
   schedule:
-    # 09:00 UTC daily. Most matches during this window of the tournament kick off from
-    # ~17:00 UTC onward and the last games of a day typically finish by ~05:00 UTC the
-    # next morning (US evening kickoffs), so this gives a comfortable buffer after the
-    # prior day's matches are finalized before pulling the day's update.
-    - cron: "0 9 * * *"
+    # 06:00 UTC daily, shown to users on the Bracket page as "updates at 6am UTC".
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:

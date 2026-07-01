@@ -36,6 +36,17 @@ const ROUND_TO_SHORT: Record<string, string> = {
 };
 const ROUND_ORDER = ["R32", "R16", "QF", "SF", "THIRD", "FINAL"];
 
+// Each round's feeder round, for walking the tree backwards from the Final. The
+// Round of 32 is the leaf level (no feeder). "THIRD" is fed by the two Semi-Final
+// losers rather than winners — handled separately, since it isn't part of the
+// winners-only tree the other rounds form.
+const PREV_ROUND: Record<string, string> = {
+  R16: "R32",
+  QF: "R16",
+  SF: "QF",
+  FINAL: "SF",
+};
+
 interface OFScore {
   ft?: [number, number];
   et?: [number, number];
@@ -80,6 +91,51 @@ function pickDecidingScore(score: OFScore) {
   return { score1: ft[0], score2: ft[1], wentToPenalties: false };
 }
 
+interface ResolvedEntry {
+  round: string;
+  matchNum: number;
+  team1Id?: string;
+  team2Id?: string;
+  team1Placeholder?: string;
+  team2Placeholder?: string;
+  score1?: number;
+  score2?: number;
+  ftScore1?: number;
+  ftScore2?: number;
+  wentToPenalties?: boolean;
+  winnerId?: string;
+  date?: string;
+  venue?: string;
+}
+
+function loserIdOf(entry?: ResolvedEntry): string | undefined {
+  if (!entry?.winnerId) return undefined;
+  return entry.team1Id === entry.winnerId ? entry.team2Id : entry.team1Id;
+}
+
+function placeholderNum(placeholder?: string): number | undefined {
+  return placeholder ? parseInt(placeholder.slice(1), 10) : undefined;
+}
+
+// Find which match in `round` produced `teamId` (as winner, or as loser for the
+// third-place match) — this is how we recover the true parent/child relationship
+// for matches that are already decided, where the feed has overwritten the
+// original "W<num>" placeholder with the real team name.
+function findFeederNum(
+  resolved: Map<number, ResolvedEntry>,
+  round: string,
+  teamId: string | undefined,
+  wantLoser: boolean,
+): number | undefined {
+  if (!teamId) return undefined;
+  for (const entry of resolved.values()) {
+    if (entry.round !== round) continue;
+    const candidateId = wantLoser ? loserIdOf(entry) : entry.winnerId;
+    if (candidateId === teamId) return entry.matchNum;
+  }
+  return undefined;
+}
+
 function serialize(value: unknown): string {
   // JSON.stringify output is valid inside a TS array literal as-is; this just unquotes
   // identifier-safe object keys so the generated block stays readable/diffable.
@@ -107,55 +163,105 @@ async function main() {
   const nameMap = buildNameMap();
   const warnings = new Set<string>();
 
-  const byRound = new Map<string, OFMatch[]>();
+  // Pass 1: resolve every knockout-stage match's teams/score/winner, keyed by its
+  // fixed match number. This doesn't yet know each match's position in the
+  // bracket tree — the feed's raw match-number order does NOT correspond to tree
+  // structure (e.g. match 89's two feeders are matches 74 and 77, not 73 and 74),
+  // so slot assignment happens in pass 2 by walking the tree from the Final.
+  const resolved = new Map<number, ResolvedEntry>();
   for (const m of data.matches) {
-    const short = ROUND_TO_SHORT[m.round];
-    if (!short) continue; // group-stage matchday, not tracked
-    if (!byRound.has(short)) byRound.set(short, []);
-    byRound.get(short)!.push(m);
+    const round = ROUND_TO_SHORT[m.round];
+    if (!round || m.num === undefined) continue; // group-stage matchday, not tracked
+
+    const team1Id = resolveTeamId(m.team1, nameMap, warnings);
+    const team2Id = resolveTeamId(m.team2, nameMap, warnings);
+    const team1Placeholder = /^[WL]\d+$/.test(m.team1) ? m.team1 : undefined;
+    const team2Placeholder = /^[WL]\d+$/.test(m.team2) ? m.team2 : undefined;
+    const decided = m.score ? pickDecidingScore(m.score) : undefined;
+    const winnerId =
+      decided && team1Id && team2Id
+        ? decided.score1 > decided.score2
+          ? team1Id
+          : team2Id
+        : undefined;
+
+    resolved.set(m.num, {
+      round,
+      matchNum: m.num,
+      team1Id,
+      team2Id,
+      team1Placeholder,
+      team2Placeholder,
+      score1: decided?.score1,
+      score2: decided?.score2,
+      ftScore1: m.score?.ft?.[0],
+      ftScore2: m.score?.ft?.[1],
+      wentToPenalties: decided?.wentToPenalties,
+      winnerId,
+      date: m.date,
+      venue: m.ground,
+    });
   }
-  for (const list of byRound.values()) {
-    list.sort((a, b) => (a.num ?? 0) - (b.num ?? 0));
+
+  // Pass 2: assign each match a canonical slot by walking the tree back from the
+  // Final. This guarantees slot j's two feeders are always slots 2j and 2j+1 in
+  // the previous round — the property the bracket UI's layout math depends on —
+  // regardless of the feed's raw match numbering.
+  const output: Record<string, (ResolvedEntry & { slot: number })[]> = {
+    R32: [],
+    R16: [],
+    QF: [],
+    SF: [],
+    THIRD: [],
+    FINAL: [],
+  };
+
+  function assign(round: string, matchNum: number | undefined, slot: number) {
+    if (matchNum === undefined) return;
+    const entry = resolved.get(matchNum);
+    if (!entry) {
+      warnings.add(`could not find match #${matchNum} expected for ${round} slot ${slot}`);
+      return;
+    }
+    output[round][slot] = { ...entry, slot };
+    if (round === "R32") return;
+    const prevRound = PREV_ROUND[round];
+    const num1 = placeholderNum(entry.team1Placeholder) ?? findFeederNum(resolved, prevRound, entry.team1Id, false);
+    const num2 = placeholderNum(entry.team2Placeholder) ?? findFeederNum(resolved, prevRound, entry.team2Id, false);
+    assign(prevRound, num1, slot * 2);
+    assign(prevRound, num2, slot * 2 + 1);
   }
+
+  const finalEntry = [...resolved.values()].find((e) => e.round === "FINAL");
+  if (finalEntry) assign("FINAL", finalEntry.matchNum, 0);
+  else warnings.add("no Final match found in feed");
+
+  // Third place is a sibling of the Final (fed by the two Semi-Final losers, not
+  // winners) rather than part of the winners-only tree walked above, so it's
+  // resolved directly rather than via `assign`.
+  const thirdEntry = [...resolved.values()].find((e) => e.round === "THIRD");
+  if (thirdEntry) output.THIRD[0] = { ...thirdEntry, slot: 0 };
 
   const generated: Record<string, unknown>[] = [];
   for (const round of ROUND_ORDER) {
-    const list = byRound.get(round) ?? [];
-    list.forEach((m, slot) => {
-      const team1Id = resolveTeamId(m.team1, nameMap, warnings);
-      const team2Id = resolveTeamId(m.team2, nameMap, warnings);
-      const team1Placeholder = /^[WL]\d+$/.test(m.team1) ? m.team1 : undefined;
-      const team2Placeholder = /^[WL]\d+$/.test(m.team2) ? m.team2 : undefined;
-
-      const decided = m.score ? pickDecidingScore(m.score) : undefined;
-      const winnerId =
-        decided && team1Id && team2Id
-          ? decided.score1 > decided.score2
-            ? team1Id
-            : team2Id
-          : undefined;
-
-      const entry: Record<string, unknown> = { round, slot };
-      if (m.num !== undefined) entry.matchNum = m.num;
-      if (team1Id) entry.team1Id = team1Id;
-      if (team2Id) entry.team2Id = team2Id;
-      if (team1Placeholder) entry.team1Placeholder = team1Placeholder;
-      if (team2Placeholder) entry.team2Placeholder = team2Placeholder;
-      if (decided) {
-        entry.score1 = decided.score1;
-        entry.score2 = decided.score2;
-        if (m.score?.ft) {
-          entry.ftScore1 = m.score.ft[0];
-          entry.ftScore2 = m.score.ft[1];
-        }
-        if (decided.wentToPenalties) entry.wentToPenalties = true;
-      }
-      if (winnerId) entry.winnerId = winnerId;
-      if (m.date) entry.date = m.date;
-      if (m.ground) entry.venue = m.ground;
-
-      generated.push(entry);
-    });
+    for (const entry of output[round]) {
+      if (!entry) continue;
+      const out: Record<string, unknown> = { round, slot: entry.slot };
+      out.matchNum = entry.matchNum;
+      if (entry.team1Id) out.team1Id = entry.team1Id;
+      if (entry.team2Id) out.team2Id = entry.team2Id;
+      if (entry.team1Placeholder) out.team1Placeholder = entry.team1Placeholder;
+      if (entry.team2Placeholder) out.team2Placeholder = entry.team2Placeholder;
+      if (entry.score1 !== undefined) out.score1 = entry.score1;
+      if (entry.score2 !== undefined) out.score2 = entry.score2;
+      if (entry.ftScore1 !== undefined) out.ftScore1 = entry.ftScore1;
+      if (entry.ftScore2 !== undefined) out.ftScore2 = entry.ftScore2;
+      if (entry.wentToPenalties) out.wentToPenalties = true;
+      if (entry.winnerId) out.winnerId = entry.winnerId;
+      if (entry.date) out.date = entry.date;
+      if (entry.venue) out.venue = entry.venue;
+      generated.push(out);
+    }
   }
 
   const body = generated.map((m) => "  " + serialize(m)).join(",\n");

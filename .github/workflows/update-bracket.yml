@@ -2,8 +2,8 @@ name: Update daily data
 
 on:
   schedule:
-    # 06:00 UTC daily, shown to users on the Bracket page as "updates at 6am UTC".
-    - cron: "0 6 * * *"
+    # 08:00 UTC daily, shown to users on the Bracket page as "updates at 6am UTC".
+    - cron: "0 8 * * *"
   workflow_dispatch:
 
 permissions:

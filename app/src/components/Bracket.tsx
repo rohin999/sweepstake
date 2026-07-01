@@ -1,9 +1,8 @@
 import type { CSSProperties } from "react";
-import { PEOPLE } from "../data/people";
-import { PICKS } from "../data/picks";
 import { TEAMS_BY_ID } from "../data/teams";
 import { MATCHES_BY_ROUND, hasMatches, isEliminated } from "../data/matches";
-import type { KnockoutMatch, Person } from "../lib/types";
+import { buildOwnerMap } from "../lib/owners";
+import type { KnockoutMatch } from "../lib/types";
 
 type MainRound = "R32" | "R16" | "QF" | "SF" | "FINAL";
 
@@ -36,12 +35,7 @@ function centerY(round: MainRound, slot: number): number {
   return (COLUMN_HEIGHT * (2 * slot + 1)) / (2 * n);
 }
 
-const ownerByTeamId = new Map<string, Person>();
-for (const pick of PICKS) {
-  const person = PEOPLE.find((p) => p.id === pick.personId);
-  if (!person) continue;
-  for (const teamId of pick.teamIds) ownerByTeamId.set(teamId, person);
-}
+const ownerByTeamId = buildOwnerMap();
 
 function TeamRow({
   teamId,

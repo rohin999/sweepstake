@@ -40,3 +40,20 @@ export interface KnockoutMatch {
   date?: string; // ISO date, e.g. "2026-07-04"
   venue?: string;
 }
+
+export interface MostConcededEntry {
+  teamId: string;
+  goalsConceded: number;
+  opponentTeamId: string;
+  round: string; // raw feed round label, e.g. "Matchday 4" or "Round of 32"
+  date?: string;
+}
+
+export interface FastestGoalEntry {
+  teamId: string;
+  scorerName: string;
+  minute: string; // raw label, e.g. "2" or "45+2"
+  minuteValue: number; // normalized (stoppage time added on) for comparing/sorting
+  round: string;
+  date?: string;
+}

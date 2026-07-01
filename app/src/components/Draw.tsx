@@ -85,7 +85,7 @@ export default function Draw() {
           <span>
             <span className="text-chalk">% chance of winning</span> the
             tournament — from bookmaker outright odds. Fuller bar = stronger
-            favourite.
+            favourite. Updates daily.
           </span>
         </div>
       </div>

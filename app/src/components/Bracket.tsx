@@ -27,7 +27,7 @@ const ROUND_COUNTS: Record<MainRound, number> = {
 // the SAME total height, so a match's centre naturally lands on the midpoint
 // of the two matches feeding it (the classic recursive-bracket property of
 // evenly spacing N items across a shared height H).
-const CARD_HEIGHT = 97;
+const CARD_HEIGHT = 81;
 const SLOT_GAP = 18;
 const COLUMN_HEIGHT = ROUND_COUNTS.R32 * (CARD_HEIGHT + SLOT_GAP);
 
@@ -46,10 +46,12 @@ for (const pick of PICKS) {
 function TeamRow({
   teamId,
   score,
+  pens,
   isWinner,
 }: {
   teamId?: string;
   score?: number;
+  pens?: number;
   isWinner: boolean;
 }) {
   if (!teamId) {
@@ -78,6 +80,9 @@ function TeamRow({
         {score !== undefined && (
           <span className="shrink-0 font-display text-xs tabular-nums text-chalk-muted">
             {score}
+            {pens !== undefined && (
+              <span className="ml-1 text-[9px] text-chalk-muted/70">({pens})</span>
+            )}
           </span>
         )}
       </div>
@@ -93,6 +98,8 @@ function TeamRow({
 function MatchCard({ match, style }: { match: KnockoutMatch; style: CSSProperties }) {
   const mainScore1 = match.ftScore1 ?? match.score1;
   const mainScore2 = match.ftScore2 ?? match.score2;
+  const pens1 = match.wentToPenalties ? match.score1 : undefined;
+  const pens2 = match.wentToPenalties ? match.score2 : undefined;
   return (
     <div
       style={style}
@@ -101,17 +108,16 @@ function MatchCard({ match, style }: { match: KnockoutMatch; style: CSSPropertie
       <TeamRow
         teamId={match.team1Id}
         score={mainScore1}
+        pens={pens1}
         isWinner={!!match.winnerId && match.winnerId === match.team1Id}
       />
       <div className="border-t border-pitch-line" />
       <TeamRow
         teamId={match.team2Id}
         score={mainScore2}
+        pens={pens2}
         isWinner={!!match.winnerId && match.winnerId === match.team2Id}
       />
-      <div className="flex h-4 items-center justify-center font-display text-[9px] uppercase tracking-widest text-chalk-muted">
-        {match.wentToPenalties ? `Pens ${match.score1}–${match.score2}` : ""}
-      </div>
     </div>
   );
 }

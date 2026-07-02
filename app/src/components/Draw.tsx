@@ -122,7 +122,7 @@ export default function Draw() {
                   return (
                     <div
                       key={q}
-                      className="flex items-stretch justify-center gap-1.5 border-l border-pitch-line px-1.5 py-2.5"
+                      className="flex items-center justify-center gap-1.5 border-l border-pitch-line px-1.5 py-2.5"
                     >
                       {team ? (
                         <>
@@ -135,8 +135,11 @@ export default function Draw() {
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pitch-elevated text-xl leading-none ring-1 ring-pitch-line">
                               {team.flag}
                             </span>
+                            {/* Fixed-height (2 lines' worth) regardless of whether the name
+                                actually wraps, so every cell's content block is the same
+                                height and flags stay aligned across the whole row/column. */}
                             <span
-                              className={`font-display text-[11px] uppercase leading-tight tracking-wide sm:text-[12px] ${
+                              className={`flex min-h-[2.5em] items-center justify-center font-display text-[11px] uppercase leading-tight tracking-wide sm:text-[12px] ${
                                 eliminated ? "text-chalk-muted line-through" : "text-chalk"
                               }`}
                             >

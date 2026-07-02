@@ -130,8 +130,18 @@ export default function Draw() {
                               centers in the whole cell, not just the space left of the pill. */}
                           <div aria-hidden="true" className="w-9 shrink-0" />
                           <div
-                            className={`flex min-w-0 flex-1 flex-col items-center justify-start gap-1 text-center ${eliminated ? "opacity-50" : ""}`}
+                            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-center ${eliminated ? "opacity-50" : ""}`}
                           >
+                            {/* Mirrors the Out badge's height above the flag, the same way the
+                                w-9 spacer mirrors the odds pill's width, so the flag/name pair
+                                centers vertically instead of the whole stack (badge included)
+                                filling the cell and pinning the flag to the top. */}
+                            <span
+                              aria-hidden="true"
+                              className="invisible rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest"
+                            >
+                              Out
+                            </span>
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pitch-elevated text-xl leading-none ring-1 ring-pitch-line">
                               {team.flag}
                             </span>

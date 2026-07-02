@@ -35,14 +35,17 @@ function thermoColour(fraction: number): string {
   return "var(--color-chalk-muted)";
 }
 
-// A slim vertical thermometer that fills bottom-to-top by win chance.
-function ThermoPill({ odds }: { odds: number }) {
+// A slim vertical thermometer that fills bottom-to-top by win chance. Always takes
+// up its layout slot even when `invisible` (eliminated teams) so cells stay the
+// same shape whether or not a team is still alive — only visibility toggles, not
+// presence, which is what keeps every row/column aligned.
+function ThermoPill({ odds, invisible }: { odds: number; invisible?: boolean }) {
   const fraction = barFraction(odds);
   const pct = formatProbability(impliedProbability(odds));
   return (
     <div
-      className="flex flex-col items-center justify-end gap-1"
-      title={`${pct} chance of winning (odds ${odds.toFixed(2)})`}
+      className={`flex w-9 shrink-0 flex-col items-center justify-end gap-1 ${invisible ? "invisible" : ""}`}
+      title={invisible ? undefined : `${pct} chance of winning (odds ${odds.toFixed(2)})`}
     >
       <div
         className="relative h-12 w-2 overflow-hidden rounded-full bg-pitch-line"
@@ -119,30 +122,48 @@ export default function Draw() {
                   return (
                     <div
                       key={q}
-                      className="flex items-stretch justify-center gap-1.5 border-l border-pitch-line px-1.5 py-2.5"
+                      className="flex items-center justify-center gap-1.5 border-l border-pitch-line px-1.5 py-2.5"
                     >
                       {team ? (
                         <>
+                          {/* Mirrors the pill's width on the left so the flag/name block
+                              centers in the whole cell, not just the space left of the pill. */}
+                          <div aria-hidden="true" className="w-9 shrink-0" />
                           <div
-                            className={`flex min-w-0 flex-1 flex-col items-center justify-start gap-1 text-center ${eliminated ? "opacity-50" : ""}`}
+                            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-center ${eliminated ? "opacity-50" : ""}`}
                           >
+                            {/* Mirrors the Out badge's height above the flag, the same way the
+                                w-9 spacer mirrors the odds pill's width, so the flag/name pair
+                                centers vertically instead of the whole stack (badge included)
+                                filling the cell and pinning the flag to the top. */}
+                            <span
+                              aria-hidden="true"
+                              className="invisible rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest"
+                            >
+                              Out
+                            </span>
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pitch-elevated text-xl leading-none ring-1 ring-pitch-line">
                               {team.flag}
                             </span>
+                            {/* Fixed-height (2 lines' worth) regardless of whether the name
+                                actually wraps, so every cell's content block is the same
+                                height and flags stay aligned across the whole row/column. */}
                             <span
-                              className={`font-display text-[11px] uppercase leading-tight tracking-wide sm:text-[12px] ${
+                              className={`flex min-h-[2.5em] items-center justify-center font-display text-[11px] uppercase leading-tight tracking-wide sm:text-[12px] ${
                                 eliminated ? "text-chalk-muted line-through" : "text-chalk"
                               }`}
                             >
                               {team.name}
                             </span>
-                            {eliminated && (
-                              <span className="rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest text-chalk-muted">
-                                Out
-                              </span>
-                            )}
+                            <span
+                              className={`rounded-full border border-pitch-line px-1.5 py-0.5 font-display text-[9px] uppercase tracking-widest text-chalk-muted ${
+                                eliminated ? "" : "invisible"
+                              }`}
+                            >
+                              Out
+                            </span>
                           </div>
-                          {!eliminated && <ThermoPill odds={team.odds} />}
+                          <ThermoPill odds={team.odds} invisible={eliminated} />
                         </>
                       ) : (
                         <span className="self-center text-sm text-pitch-line">—</span>

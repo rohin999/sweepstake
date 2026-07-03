@@ -237,7 +237,7 @@ export default function Bracket() {
           owner&rsquo;s name.
         </p>
         <p className="mt-1 text-xs text-chalk-muted">
-          Updates automatically every day at 4am UTC.
+          Updates automatically every hour.
         </p>
         <p className="mt-1 text-xs text-chalk-muted sm:hidden">
           Swipe to see later rounds →

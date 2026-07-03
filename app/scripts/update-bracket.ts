@@ -117,6 +117,20 @@ function placeholderNum(placeholder?: string): number | undefined {
   return placeholder ? parseInt(placeholder.slice(1), 10) : undefined;
 }
 
+// Turn a "W<num>"/"L<num>" placeholder into the concrete team id it now stands for,
+// if the feeder match it references has already been decided — the winner for "W…",
+// the loser for "L…". Returns undefined while the feeder is still open.
+function resolvePlaceholder(
+  resolved: Map<number, ResolvedEntry>,
+  placeholder?: string,
+): string | undefined {
+  const num = placeholderNum(placeholder);
+  if (num === undefined) return undefined;
+  const feeder = resolved.get(num);
+  if (!feeder) return undefined;
+  return placeholder![0] === "L" ? loserIdOf(feeder) : feeder.winnerId;
+}
+
 // Find which match in `round` produced `teamId` (as winner, or as loser for the
 // third-place match) — this is how we recover the true parent/child relationship
 // for matches that are already decided, where the feed has overwritten the
@@ -203,6 +217,48 @@ async function main() {
     });
   }
 
+  // Pass 1b: resolve unresolved "W<num>"/"L<num>" placeholders to real team ids using
+  // the feeders we've already decided. openfootball is inconsistent about rewriting a
+  // next-round fixture's placeholders with the actual teams once its feeders finish
+  // (e.g. it may still list an R16 match as "W83 vs W84" long after matches 83 and 84
+  // are won), which would otherwise leave the bracket showing "TBD" for teams that have
+  // plainly progressed. We derive them ourselves. Looping to convergence lets a
+  // resolution cascade up the tree as deeper feeders get decided, with no assumption
+  // about how many rounds remain. Placeholder fields are left intact so Pass 2's
+  // tree-walk still keys off them for structure.
+  let resolvedSomething = true;
+  while (resolvedSomething) {
+    resolvedSomething = false;
+    for (const entry of resolved.values()) {
+      if (!entry.team1Id && entry.team1Placeholder) {
+        const id = resolvePlaceholder(resolved, entry.team1Placeholder);
+        if (id) {
+          entry.team1Id = id;
+          resolvedSomething = true;
+        }
+      }
+      if (!entry.team2Id && entry.team2Placeholder) {
+        const id = resolvePlaceholder(resolved, entry.team2Placeholder);
+        if (id) {
+          entry.team2Id = id;
+          resolvedSomething = true;
+        }
+      }
+      // Now that both teams may be known, back-fill a winner if this match itself has a
+      // deciding score — the same rule Pass 1 uses — so it can feed the round above it.
+      if (
+        !entry.winnerId &&
+        entry.team1Id &&
+        entry.team2Id &&
+        entry.score1 !== undefined &&
+        entry.score2 !== undefined
+      ) {
+        entry.winnerId = entry.score1 > entry.score2 ? entry.team1Id : entry.team2Id;
+        resolvedSomething = true;
+      }
+    }
+  }
+
   // Pass 2: assign each match a canonical slot by walking the tree back from the
   // Final. This guarantees slot j's two feeders are always slots 2j and 2j+1 in
   // the previous round — the property the bracket UI's layout math depends on —
@@ -248,10 +304,12 @@ async function main() {
       if (!entry) continue;
       const out: Record<string, unknown> = { round, slot: entry.slot };
       out.matchNum = entry.matchNum;
+      // Emit a placeholder only while the real team is still unknown; once resolved
+      // (Pass 1b), the concrete id supersedes it so the UI renders the team, not "TBD".
       if (entry.team1Id) out.team1Id = entry.team1Id;
+      else if (entry.team1Placeholder) out.team1Placeholder = entry.team1Placeholder;
       if (entry.team2Id) out.team2Id = entry.team2Id;
-      if (entry.team1Placeholder) out.team1Placeholder = entry.team1Placeholder;
-      if (entry.team2Placeholder) out.team2Placeholder = entry.team2Placeholder;
+      else if (entry.team2Placeholder) out.team2Placeholder = entry.team2Placeholder;
       if (entry.score1 !== undefined) out.score1 = entry.score1;
       if (entry.score2 !== undefined) out.score2 = entry.score2;
       if (entry.ftScore1 !== undefined) out.ftScore1 = entry.ftScore1;

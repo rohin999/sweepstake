@@ -2,8 +2,11 @@ name: Update daily data
 
 on:
   schedule:
-    # 04:00 UTC daily, shown to users on the Bracket page as "updates at 4am UTC".
-    - cron: "0 4 * * *"
+    # Hourly, on the hour. Bracket + bonus stats come from the free openfootball feed,
+    # so refreshing them every hour keeps results/progression close to live. The odds
+    # step is gated to the 04:00 UTC run only (see below) to stay within the odds API's
+    # free monthly quota.
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -51,11 +54,21 @@ jobs:
       # and every step below keeps the three updates (bracket/odds/bonus stats)
       # independent — a failure in one (e.g. a bad odds key) must never skip the
       # others, since GitHub Actions otherwise skips all later steps by default.
+      #
+      # The workflow runs hourly, but the odds API's free tier is ~500 requests/month,
+      # so only actually fetch odds during the 04:00 UTC hour (or on a manual dispatch).
+      # Odds barely move on a sweepstake timescale, so once a day is plenty. Off-hour
+      # runs leave odds.ts untouched, so the commit step below simply finds no change.
       - name: Update odds
         if: always()
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: npm run update-odds
+        run: |
+          if [ "$(date -u +%H)" = "04" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            npm run update-odds
+          else
+            echo "Skipping odds outside the 04:00 UTC window (API quota)."
+          fi
       - name: Commit odds if changed
         id: commit_odds
         if: always()

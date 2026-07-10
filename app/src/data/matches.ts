@@ -36,10 +36,10 @@ const GENERATED_MATCHES: KnockoutMatch[] = [
   {round:"R16",slot:6,matchNum:95,team1Id:"ARG",team2Id:"EGY",score1:3,score2:2,ftScore1:3,ftScore2:2,winnerId:"ARG",date:"2026-07-07",venue:"Atlanta"},
   {round:"R16",slot:7,matchNum:96,team1Id:"SUI",team2Id:"COL",score1:4,score2:3,ftScore1:0,ftScore2:0,wentToPenalties:true,winnerId:"SUI",date:"2026-07-07",venue:"Vancouver"},
   {round:"QF",slot:0,matchNum:97,team1Id:"FRA",team2Id:"MAR",score1:2,score2:0,ftScore1:2,ftScore2:0,winnerId:"FRA",date:"2026-07-09",venue:"Boston (Foxborough)"},
-  {round:"QF",slot:1,matchNum:98,team1Id:"ESP",team2Id:"BEL",date:"2026-07-10",venue:"Los Angeles (Inglewood)"},
+  {round:"QF",slot:1,matchNum:98,team1Id:"ESP",team2Id:"BEL",score1:2,score2:1,ftScore1:2,ftScore2:1,winnerId:"ESP",date:"2026-07-10",venue:"Los Angeles (Inglewood)"},
   {round:"QF",slot:2,matchNum:99,team1Id:"NOR",team2Id:"ENG",date:"2026-07-11",venue:"Miami (Miami Gardens)"},
   {round:"QF",slot:3,matchNum:100,team1Id:"ARG",team2Id:"SUI",date:"2026-07-11",venue:"Kansas City"},
-  {round:"SF",slot:0,matchNum:101,team1Id:"FRA",team2Placeholder:"W98",date:"2026-07-14",venue:"Dallas (Arlington)"},
+  {round:"SF",slot:0,matchNum:101,team1Id:"FRA",team2Id:"ESP",date:"2026-07-14",venue:"Dallas (Arlington)"},
   {round:"SF",slot:1,matchNum:102,team1Placeholder:"W99",team2Placeholder:"W100",date:"2026-07-15",venue:"Atlanta"},
   {round:"THIRD",slot:0,matchNum:103,team1Placeholder:"L101",team2Placeholder:"L102",date:"2026-07-18",venue:"Miami (Miami Gardens)"},
   {round:"FINAL",slot:0,matchNum:104,team1Placeholder:"W101",team2Placeholder:"W102",date:"2026-07-19",venue:"New York/New Jersey (East Rutherford)"}

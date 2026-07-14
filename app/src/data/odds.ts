@@ -11,10 +11,10 @@ const ODDS_OVERRIDES: Partial<Record<string, number>> = {
 // this file used to store), kept up to date daily from there.
 // --- GENERATED-BEGIN ---
 const GENERATED_ODDS: Record<string, number> = {
-  FRA: 2.99,
-  ESP: 5.1,
-  ARG: 5.05,
-  ENG: 5.7,
+  FRA: 2.46,
+  ESP: 4.2,
+  ARG: 5.45,
+  ENG: 4.25,
   POR: 14.5,
   BRA: 13.5,
   NED: 21,

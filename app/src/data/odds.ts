@@ -12,9 +12,9 @@ const ODDS_OVERRIDES: Partial<Record<string, number>> = {
 // --- GENERATED-BEGIN ---
 const GENERATED_ODDS: Record<string, number> = {
   FRA: 2.46,
-  ESP: 4.2,
-  ARG: 5.45,
-  ENG: 4.25,
+  ESP: 1.72,
+  ARG: 5.1,
+  ENG: 3.9,
   POR: 14.5,
   BRA: 13.5,
   NED: 21,

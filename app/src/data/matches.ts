@@ -42,7 +42,7 @@ const GENERATED_MATCHES: KnockoutMatch[] = [
   {round:"SF",slot:0,matchNum:101,team1Id:"FRA",team2Id:"ESP",score1:0,score2:2,ftScore1:0,ftScore2:2,winnerId:"ESP",date:"2026-07-14",venue:"Dallas (Arlington)"},
   {round:"SF",slot:1,matchNum:102,team1Id:"ENG",team2Id:"ARG",score1:1,score2:2,ftScore1:1,ftScore2:2,winnerId:"ARG",date:"2026-07-15",venue:"Atlanta"},
   {round:"THIRD",slot:0,matchNum:103,team1Id:"FRA",team2Id:"ENG",score1:4,score2:6,ftScore1:4,ftScore2:6,winnerId:"ENG",date:"2026-07-18",venue:"Miami (Miami Gardens)"},
-  {round:"FINAL",slot:0,matchNum:104,team1Id:"ESP",team2Id:"ARG",date:"2026-07-19",venue:"New York/New Jersey (East Rutherford)"}
+  {round:"FINAL",slot:0,matchNum:104,team1Id:"ESP",team2Id:"ARG",score1:1,score2:0,ftScore1:0,ftScore2:0,winnerId:"ESP",date:"2026-07-19",venue:"New York/New Jersey (East Rutherford)"}
 ];
 // --- GENERATED-END ---
 
